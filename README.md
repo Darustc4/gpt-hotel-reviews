@@ -25,3 +25,5 @@ A screenshot of the GUI when a valid review is submitted:
 A screenshot of the GUI when an invalid review is submitted:
 
 <img src="./readme_images/invalid_review.png" width="500">
+
+Thanks to Flaticon (https://www.flaticon.com/) for providing the free icons used in the application.
