@@ -19,9 +19,12 @@ class Reviewer(ctk.CTk):
         openai.api_key = os.environ.get("OPENAI_API_KEY")
 
         self.analyzer = Analyzer()
-        self.scoring = Scoring(0, 0, 0, 0, 0)
-        self.review = None
-        self.results = None
+
+        self.hygiene_score = 0
+        self.food_score = 0
+        self.reception_score = 0
+        self.bar_score = 0
+        self.other_comments_score = 0
 
         self.create_tk()
 
@@ -142,7 +145,7 @@ class Reviewer(ctk.CTk):
         # Review Frame
         self.tk_hygiene_review_label = ctk.CTkLabel(self.tk_review_frame, text="Hygiene Review", bg_color=header_label_color, text_color=header_font_color)
         self.tk_hygiene_review_label.grid(row=0, column=0, sticky="nsew")
-        self.tk_hygiene_review_clarification_label = ctk.CTkLabel(self.tk_review_frame, text="Please provide a brief description of the hygiene review")
+        self.tk_hygiene_review_clarification_label = ctk.CTkLabel(self.tk_review_frame, text="Describe the hygiene, maintenance and cleanliness of the hotel.")
         self.tk_hygiene_review_clarification_label.grid(row=0, column=1, sticky="nsew")
 
         self.tk_hygiene_review_text = tk.Text(self.tk_review_frame, height=5)
@@ -150,7 +153,7 @@ class Reviewer(ctk.CTk):
 
         self.tk_food_review_label = ctk.CTkLabel(self.tk_review_frame, text="Food Review", bg_color=header_label_color, text_color=header_font_color)
         self.tk_food_review_label.grid(row=2, column=0, sticky="nsew")
-        self.tk_food_review_clarification_label = ctk.CTkLabel(self.tk_review_frame, text="Please provide a brief description of the food review")
+        self.tk_food_review_clarification_label = ctk.CTkLabel(self.tk_review_frame, text="Describe the food and restaurant experience.")
         self.tk_food_review_clarification_label.grid(row=2, column=1, sticky="nsew")
 
         self.tk_food_review_text = tk.Text(self.tk_review_frame, height=5)
@@ -158,7 +161,7 @@ class Reviewer(ctk.CTk):
 
         self.tk_reception_review_label = ctk.CTkLabel(self.tk_review_frame, text="Reception Review", bg_color=header_label_color, text_color=header_font_color)
         self.tk_reception_review_label.grid(row=4, column=0, sticky="nsew")
-        self.tk_reception_review_clarification_label = ctk.CTkLabel(self.tk_review_frame, text="Please provide a brief description of the reception review")
+        self.tk_reception_review_clarification_label = ctk.CTkLabel(self.tk_review_frame, text="Describe your experience with the reception and service staff.")
         self.tk_reception_review_clarification_label.grid(row=4, column=1, sticky="nsew")
 
         self.tk_reception_review_text = tk.Text(self.tk_review_frame, height=5)
@@ -166,7 +169,7 @@ class Reviewer(ctk.CTk):
 
         self.tk_bar_review_label = ctk.CTkLabel(self.tk_review_frame, text="Bar Review", bg_color=header_label_color, text_color=header_font_color)
         self.tk_bar_review_label.grid(row=6, column=0, sticky="nsew")
-        self.tk_bar_review_clarification_label = ctk.CTkLabel(self.tk_review_frame, text="Please provide a brief description of the bar review")
+        self.tk_bar_review_clarification_label = ctk.CTkLabel(self.tk_review_frame, text="Describe your experience at the bar and other entertainment facilities.")
         self.tk_bar_review_clarification_label.grid(row=6, column=1, sticky="nsew")
 
         self.tk_bar_review_text = tk.Text(self.tk_review_frame, height=5)
@@ -174,7 +177,7 @@ class Reviewer(ctk.CTk):
 
         self.tk_other_review_label = ctk.CTkLabel(self.tk_review_frame, text="Other Review", bg_color=header_label_color, text_color=header_font_color)
         self.tk_other_review_label.grid(row=8, column=0, sticky="nsew")
-        self.tk_other_review_clarification_label = ctk.CTkLabel(self.tk_review_frame, text="Please provide a brief description of the other review")
+        self.tk_other_review_clarification_label = ctk.CTkLabel(self.tk_review_frame, text="Include any other comments that do not fit in the above categories.")
         self.tk_other_review_clarification_label.grid(row=8, column=1, sticky="nsew")
 
         self.tk_other_review_text = tk.Text(self.tk_review_frame, height=5)
@@ -187,11 +190,60 @@ class Reviewer(ctk.CTk):
         self.tk_submit_button = ctk.CTkButton(self.tk_submit_frame, text="Submit", command=self.submit)
         self.tk_submit_button.grid(row=0, column=0, sticky="nsew", padx=3, pady=3)
 
-        self.tk_gpt_comment_label = ctk.CTkLabel(self.tk_submit_frame, text="You will receive feedback on your review here.")
-        self.tk_gpt_comment_label.grid(row=0, column=1, sticky="nsew")
+        self.tk_gpt_comment_text = tk.Text(self.tk_submit_frame, height=3)
+        self.tk_gpt_comment_text.grid(row=0, column=1, sticky="nsew")
+
+        self.set_feedback_text("You will receive feedback on your review here.")
+
+    def set_feedback_text(self, text):
+        self.tk_gpt_comment_text.configure(state="normal")
+        self.tk_gpt_comment_text.delete(1.0, tk.END)
+        self.tk_gpt_comment_text.insert(tk.END, text)
+        self.tk_gpt_comment_text.see(tk.END)
+        self.tk_gpt_comment_text.configure(state="disabled")
 
     def submit(self):
-        print("Submit")
+        review = Review(
+            hygiene_review=self.tk_hygiene_review_text.get("1.0", "end-1c"),
+            food_review=self.tk_food_review_text.get("1.0", "end-1c"),
+            reception_review=self.tk_reception_review_text.get("1.0", "end-1c"),
+            bar_review=self.tk_bar_review_text.get("1.0", "end-1c"),
+            other_comments=self.tk_other_review_text.get("1.0", "end-1c")
+        )
+
+        results = self.analyzer.validate(review)
+
+        if results.is_valid:
+            new_scoring = self.analyzer.score(review)
+            self.change_score(new_scoring)
+
+            self.set_feedback_text("Thank you for your review!")
+
+        else:
+            self.set_feedback_text(results.explanation)
+
+    def change_score(self, scores):
+        def score_reward(score):
+            if score == 1:      return -50
+            elif score == 2:    return -25
+            elif score == 3:    return 0
+            elif score == 4:    return 50
+            elif score == 5:    return 100
+            else:               return 0
+
+        self.hygiene_score += score_reward(scores.hygiene_score)
+        self.food_score += score_reward(scores.food_score)
+        self.reception_score += score_reward(scores.reception_score)
+        self.bar_score += score_reward(scores.bar_score)
+        self.other_comments_score += score_reward(scores.other_comments_score)
+
+        self.tk_score_hygiene_count_var.set(self.hygiene_score)
+        self.tk_score_food_count_var.set(self.food_score)
+        self.tk_score_reception_count_var.set(self.reception_score)
+        self.tk_score_bar_count_var.set(self.bar_score)
+        self.tk_score_other_count_var.set(self.other_comments_score)
+
+
 
 if __name__ == "__main__":
     app = Reviewer()
