@@ -6,8 +6,6 @@ import openai
 import os
 import re
 
-openai.api_key = os.environ.get("OPENAI_API_KEY")
-
 class Results:
     def __init__(self, review, is_valid, explanation):
         self.review = review
@@ -24,6 +22,13 @@ class Scoring:
         self.reception_score = reception_score
         self.bar_score = bar_score
         self.other_comments_score = other_comments_score
+
+    def increase_score(self, other_scoring):
+        self.hygiene_score += other_scoring.hygiene_score
+        self.food_score += other_scoring.food_score
+        self.reception_score += other_scoring.reception_score
+        self.bar_score += other_scoring.bar_score
+        self.other_comments_score += other_scoring.other_comments_score
 
     def get_json(self):
         return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True, indent=4)
@@ -119,6 +124,8 @@ class Analyzer:
 
 
 if __name__ == '__main__':
+    openai.api_key = os.environ.get("OPENAI_API_KEY")
+
     parser = argparse.ArgumentParser(description='Analyze a review with a LLM model and attriutes credit to the reviewed employees.')
     args = parser.parse_args()
 
