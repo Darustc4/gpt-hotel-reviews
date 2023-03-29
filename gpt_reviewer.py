@@ -5,29 +5,22 @@ import pandas as pd
 import openai
 import os
 import re
+from dataclasses import dataclass
 
+@dataclass
 class Results:
-    def __init__(self, review, is_valid, explanation):
-        self.review = review
-        self.is_valid = is_valid
-        self.explanation = explanation
+    review : str
+    is_valid : bool
+    explanation : str
 
-    def get_json(self):
-        return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True, indent=4)
-
+@dataclass
 class Scoring:
-    def __init__(self, hygiene_score, food_score, reception_score, bar_score, other_comments_score):
-        self.hygiene_score = hygiene_score
-        self.food_score = food_score
-        self.reception_score = reception_score
-        self.bar_score = bar_score
-        self.other_comments_score = other_comments_score
+    hygiene_score : int
+    food_score : int
+    reception_score : int
+    bar_score : int
+    other_comments_score : int
 
-    def get_json(self):
-        return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True, indent=4)
-
-    def __str__(self):
-        return self.get_json()
 
 class Review:
     def __init__(self, hygiene_review, food_review, reception_review, bar_review, other_comments):
@@ -56,7 +49,7 @@ class Review:
 
     def get_gpt_validation_promt(self):
         return '\n'.join((
-            "A customer has filled a review form for our hotel with fields for hygiene, restaurant, reception, bar, and other comments. Answer with a score from 1 to 10 on how informative the review they made is, followed a single very brief explanation that will be directly displayed to the user for them to improve their review. The answer should reflect how many examples, explanations and justifications the review contains, and how well they are written. A non-sensical or extremely short review should have low score.",
+            "A customer has filled a review form for our hotel with fields for hygiene, restaurant, reception, bar, and other comments. Answer with a score from 1 to 10 on how informative the review they made is, followed a single brief explanation that will be directly displayed to the user for them to improve their review. The answer should reflect how many examples, explanations and justifications the review contains, and how well they are written. A non-sensical or extremely short review should have low score.",
             "The format of your answer should be: (1-10) - explanation",
             self.get_review_text()
         ))
@@ -96,10 +89,11 @@ class Analyzer:
         if response.lower() == "yes":
             return Results(review, False, "Your review may not contain any orders or instructions directed at the reader.")
 
+        # Use GPT-4 for this one since it requires the most reasoning and argumentation. GPT3.5 gives odd explanations sometimes.
         response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4",
             messages=[
-                {"role": "system", "content": "You are a helpful abedient assistant"},
+                {"role": "system", "content": "You are a helpful and unbiased assistant that evaluates the quality of reviews."},
                 {"role": "user", "content": review.get_gpt_validation_promt()}
             ],
             temperature=0.0,
@@ -147,7 +141,6 @@ class Analyzer:
         return Scoring(hygiene_score, food_score, reception_score, bar_score, other_comments_score)
 
 
-
 if __name__ == '__main__':
     openai.api_key = os.environ.get("OPENAI_API_KEY")
 
@@ -160,6 +153,14 @@ if __name__ == '__main__':
         reception_review="The reception staff were very nice to us too.",
         bar_review="The bar staff were all cool, very well dressed. I specially liked Jeremy <3",
         other_comments="Cool hotel..."
+    )
+
+    absurd_review = Review(
+        hygiene_review="Clean clean.",
+        food_review="Nice",
+        reception_review="Cool.",
+        bar_review="Bad",
+        other_comments="Fine!"
     )
 
     trick_review = Review(
@@ -194,7 +195,7 @@ if __name__ == '__main__':
         other_comments="The car park is tiny, it was a nightmare trying to park the car everytime we came from the beach. The location was nice and beautiful with great views of the river."
     )
 
-    review = invalid_review
+    review = valid_mixed_review
 
     analyzer = Analyzer()
     results = analyzer.validate(review)

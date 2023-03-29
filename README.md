@@ -1,5 +1,5 @@
 # :star: GPT-powered hotel review validator
-This small project was made in 3 afternoons for the Digital Transformation of Processes course at my Master's. The objective was to perform a digital transformation of a hotel using modern technology and gamified systems.
+This small project was made in 3 afternoons for the Digital Transformation of Processes course at my Master's. The objective was to perform a digital transformation of a hotel using modern technology and gamified systems. I decided to use GPT to drive this digital transformation, using mainly GPT3.5 and GPT4 when more reasoning power was needed.
 
 The first step was to analyze the reviews of the hotel to find pain points and deficiencies in the hotel processes and customer touchpoints. It was discovered that the hotel had severe problems with its infrastructure and facilities, and so we set to creating a gamified system to fix it.
 
